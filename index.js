@@ -16,7 +16,7 @@ app.use(
 
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.PASS}@cluster0.mmdewqm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -41,16 +41,29 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
+
     // get all the cart items here
+
     app.get("/carts", async (req, res) => {
-      const result = await cartCollection.find().toArray();
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await cartCollection.find(query).toArray();
       res.send(result);
     });
+    // Delete  cart items here
+
+    app.delete("/carts:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.deleteOne(query)
+      res.send(result);
+    });
+
     // store add to cart data here
     app.post("/carts", async (req, res) => {
       const cartData = req.body;
       const result = await cartCollection.insertOne(cartData);
-      res.send(result)
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
