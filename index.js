@@ -36,14 +36,60 @@ async function run() {
 
     const menuCollection = client.db("bistroBoss").collection("menu");
     const cartCollection = client.db("bistroBoss").collection("cart");
+    const userCollection = client.db("bistroBoss").collection("user");
+
+    // =============================menu related api here ======================================
+
     // get all the menu items here
     app.get("/menu", async (req, res) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
 
-    // get all the cart items here
+    // =============================user related api here ======================================
+    // send user info into the dataBase
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already existing", insertedId: null });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+    // get all users from database
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+    // delete user from database
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
+    // ====================================make user to admin ===============================
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
 
+    // =============================cart related api here ======================================
+    // store add to cart data here
+    app.post("/carts", async (req, res) => {
+      const cartData = req.body;
+      const result = await cartCollection.insertOne(cartData);
+      res.send(result);
+    });
+
+    // get all the cart items here
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
@@ -51,18 +97,10 @@ async function run() {
       res.send(result);
     });
     // Delete  cart items here
-
-    app.delete("/carts:id", async (req, res) => {
+    app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await cartCollection.deleteOne(query)
-      res.send(result);
-    });
-
-    // store add to cart data here
-    app.post("/carts", async (req, res) => {
-      const cartData = req.body;
-      const result = await cartCollection.insertOne(cartData);
+      const result = await cartCollection.deleteOne(query);
       res.send(result);
     });
 
