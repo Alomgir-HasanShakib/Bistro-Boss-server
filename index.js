@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 app.use(
   cors({
@@ -30,13 +31,39 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-
     //     main code start here
 
     const menuCollection = client.db("bistroBoss").collection("menu");
     const cartCollection = client.db("bistroBoss").collection("cart");
     const userCollection = client.db("bistroBoss").collection("user");
+
+    // ====================================jwt api =========================================
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_TOKEN, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    // ==========================middleware ======================
+    const verifytoken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({
+          message: "Forbidden Access",
+        });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.JWT_TOKEN, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "Forbidden access" });
+        }
+        req.decoded = decoded;
+
+        next();
+      });
+    };
 
     // =============================menu related api here ======================================
 
@@ -58,11 +85,13 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
+
     // get all users from database
-    app.get("/users", async (req, res) => {
+    app.get("/users",verifytoken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
+
     // delete user from database
     app.delete("/users/:id", async (req, res) => {
       const id = req.params.id;
@@ -70,6 +99,7 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
+
     // ====================================make user to admin ===============================
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
@@ -96,6 +126,7 @@ async function run() {
       const result = await cartCollection.find(query).toArray();
       res.send(result);
     });
+
     // Delete  cart items here
     app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
