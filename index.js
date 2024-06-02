@@ -65,6 +65,19 @@ async function run() {
       });
     };
 
+    // use verifyAdmin after verifyToken
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+      next();
+    };
+
     // =============================menu related api here ======================================
 
     // get all the menu items here
@@ -87,13 +100,29 @@ async function run() {
     });
 
     // get all users from database
-    app.get("/users",verifytoken, async (req, res) => {
+    app.get("/users", verifytoken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
+    // get admin  from database
+    app.get("/users/admin/:email", verifytoken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "UnAuthorize Access" });
+      }
+      const query = { email: email };
+      console.log(query);
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
     // delete user from database
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id",verifytoken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -101,7 +130,7 @@ async function run() {
     });
 
     // ====================================make user to admin ===============================
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.patch("/users/admin/:id",verifytoken,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
