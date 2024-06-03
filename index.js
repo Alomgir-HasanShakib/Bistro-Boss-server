@@ -4,6 +4,7 @@ const port = process.env.PORT || 5000;
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_KEY);
 app.use(
   cors({
     origin: ["http://localhost:5173"],
@@ -32,6 +33,7 @@ async function run() {
     const menuCollection = client.db("bistroBoss").collection("menu");
     const cartCollection = client.db("bistroBoss").collection("cart");
     const userCollection = client.db("bistroBoss").collection("user");
+    const paymentCollection = client.db("bistroBoss").collection("payments");
 
     // ====================================jwt api =========================================
 
@@ -204,6 +206,26 @@ async function run() {
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     });
+
+    // =================================payment api ======================================================
+
+    app.post("/create-payment-itent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      // console.log(amount, "inside the intent");
+      if (!price || amount <= 0) return res.send({clientSecret:null});
+      const { client_secret } = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+
+      });
+      res.send({
+        clientSecret: client_secret,
+      });
+    });
+
+    // send the payment info into the database
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
