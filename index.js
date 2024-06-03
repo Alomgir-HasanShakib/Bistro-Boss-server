@@ -213,12 +213,11 @@ async function run() {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       // console.log(amount, "inside the intent");
-      if (!price || amount <= 0) return res.send({clientSecret:null});
+      if (!price || amount <= 0) return res.send({ clientSecret: null });
       const { client_secret } = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
         payment_method_types: ["card"],
-
       });
       res.send({
         clientSecret: client_secret,
@@ -226,6 +225,20 @@ async function run() {
     });
 
     // send the payment info into the database
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const paymentRes = await paymentCollection.insertOne(payment);
+
+      // carefully delete each items from the cart
+      const query = {
+        _id: {
+          $in: payment.cartIds.map((id) => new ObjectId(id)),
+        },
+      };
+      const deleteRes = await cartCollection.deleteMany(query);
+
+      res.send({ paymentRes, deleteRes });
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
