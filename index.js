@@ -6,11 +6,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://eventer-9064e.web.app",
-      "https://eventer-9064e.firebaseapp.com",
-    ],
+    origin: ["http://localhost:5173"],
     credentials: true,
   })
 );
@@ -86,6 +82,46 @@ async function run() {
       res.send(result);
     });
 
+    // post  the menu items to the dataBase
+    app.post("/menu", verifytoken, verifyAdmin, async (req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result);
+    });
+    // for showing single data info. if i can't do this so im not able to show single data info
+    app.get("/menu/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await menuCollection.findOne(query);
+      res.send(result);
+    });
+    // delete menu from database
+    app.delete("/menu/:id", verifytoken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await menuCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //  update menu
+    app.put("/menu/:id", verifytoken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateServices = req.body;
+      const item = {
+        $set: {
+          name: updateServices.name,
+          price: updateServices.price,
+          recipe: updateServices.recipe,
+          category: updateServices.category,
+        },
+      };
+      const result = await menuCollection.updateOne(filter, item, options);
+      res.send(result);
+    });
+
     // =============================user related api here ======================================
     // send user info into the dataBase
     app.post("/users", async (req, res) => {
@@ -122,7 +158,7 @@ async function run() {
     });
 
     // delete user from database
-    app.delete("/users/:id",verifytoken,verifyAdmin, async (req, res) => {
+    app.delete("/users/:id", verifytoken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -130,15 +166,20 @@ async function run() {
     });
 
     // ====================================make user to admin ===============================
-    app.patch("/users/admin/:id",verifytoken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: { role: "admin" },
-      };
-      const result = await userCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
+    app.patch(
+      "/users/admin/:id",
+      verifytoken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: { role: "admin" },
+        };
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      }
+    );
 
     // =============================cart related api here ======================================
     // store add to cart data here
